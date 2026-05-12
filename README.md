@@ -47,6 +47,22 @@ A free, single-file children's-book + interactive eBook editor that runs entirel
 
 No `npm install`. No build step. No accounts. The whole app is one self-contained file.
 
+---
+
+## 🎁 For someone receiving this file
+
+If a friend sent you `index.html` and you've never used this before, here's the 60-second tour:
+
+1. 🖱️ **Double-click `index.html`** — it opens in your default browser. Chrome or Edge work best (full features). Firefox and Safari work too, just without the "Save to file" extras.
+2. ✍️ **Start editing on the left.** The book on the right updates as you type. Your work auto-saves to the browser as you go.
+3. 💾 **Click `💾 Save to file` ONCE** to pick a spot on your computer (e.g. Desktop or Dropbox). After that, every edit auto-saves to that real file — it survives reloads, browser clear-data, and computer restarts. (Chrome/Edge only.)
+4. 📤 **To open a book someone sent you:** click `📤 Import JSON` (or `📂 Open file` in Chrome/Edge) and choose their `.json` file.
+5. 📖 **To share your finished book:** click `📖 Export Book` — you'll get a single `.html` file you can email, drop on a thumb drive, or upload anywhere. The recipient just double-clicks it to read.
+
+That's it. No accounts, no internet required after first open, nothing leaves your computer.
+
+---
+
 ### 📦 Portability — works on any modern computer
 
 You can email or USB-transfer `index.html` to anyone. They just double-click and it runs in Chrome, Edge, Firefox, or Safari. The only thing they need is **internet on first open** — to load StPageFlip (page-flip engine) and the Google Fonts. After that first load, browser cache makes it work offline forever.
