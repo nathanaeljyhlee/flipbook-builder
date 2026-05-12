@@ -287,6 +287,35 @@
       font-family: 'Fredoka', sans-serif;
     }
 
+    /* Image attribution / credit — tiny, italic, doesn't compete with pagenum */
+    .pf-page .credit {
+      position: absolute; bottom: 10px; left: 18px;
+      max-width: calc(100% - 70px);
+      font-size: 9px; line-height: 1.3; font-style: italic;
+      color: var(--ink-fade);
+      font-family: 'Nunito', sans-serif;
+      letter-spacing: 0.1px;
+    }
+    .pf-page .credit a {
+      color: inherit;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .pf-page.cover .credit,
+    .pf-page.layout-fullbleed .credit {
+      color: rgba(255, 255, 255, 0.7);
+    }
+    .pf-page.cover .credit {
+      left: 0; right: 0; bottom: 8px;
+      text-align: center; max-width: 100%;
+      padding: 0 20px;
+      z-index: 2;
+    }
+    .pf-page.layout-fullbleed .credit {
+      bottom: 6px; left: 28px;
+      z-index: 2;
+    }
+
     .pf-page.layout-image-top img { max-height: 45%; margin: 0 auto 16px auto; }
 
     .pf-page.layout-fullbleed { padding: 0; }
@@ -507,11 +536,11 @@
       author: 'Your Name',
       theme: 'sunshine',
       pages: [
-        { type: 'cover',   title: '',             body: '', image: null, layout: 'image-top' },
-        { type: 'content', title: 'Introduction', body: 'Welcome to my book! Tap the editor on the left to change this text or add a photo.', image: null, layout: 'image-top' },
-        { type: 'content', title: 'Chapter 1',    body: 'Add your science content here. Upload an image to illustrate this page.', image: null, layout: 'image-top' },
-        { type: 'content', title: 'Chapter 2',    body: 'Keep adding pages with the "Add a Page" button.', image: null, layout: 'image-top' },
-        { type: 'back',    title: 'The End',      body: 'Thanks for reading!', image: null, layout: 'image-top' }
+        { type: 'cover',   title: '',             body: '', image: null, layout: 'image-top', imageCredit: '', imageCreditUrl: '' },
+        { type: 'content', title: 'Introduction', body: 'Welcome to my book! Tap the editor on the left to change this text or add a photo.', image: null, layout: 'image-top', imageCredit: '', imageCreditUrl: '' },
+        { type: 'content', title: 'Chapter 1',    body: 'Add your science content here. Upload an image to illustrate this page.', image: null, layout: 'image-top', imageCredit: '', imageCreditUrl: '' },
+        { type: 'content', title: 'Chapter 2',    body: 'Keep adding pages with the "Add a Page" button.', image: null, layout: 'image-top', imageCredit: '', imageCreditUrl: '' },
+        { type: 'back',    title: 'The End',      body: 'Thanks for reading!', image: null, layout: 'image-top', imageCredit: '', imageCreditUrl: '' }
       ]
     };
 
@@ -524,6 +553,7 @@
     let lastSnapTime = 0;
     let fileHandle = null;        // FileSystemFileHandle when linked to a real file
     let fileWriteTimer = null;
+    let lastSavedAt = null;       // ms timestamp of most recent successful save
 
     // ===== Persistence =====
     function loadState() {
@@ -532,7 +562,11 @@
         if (!saved) return structuredClone(DEFAULT_STATE);
         const parsed = JSON.parse(saved);
         if (!parsed.pages || !Array.isArray(parsed.pages)) return structuredClone(DEFAULT_STATE);
-        parsed.pages.forEach(p => { if (!p.layout) p.layout = 'image-top'; });
+        parsed.pages.forEach(p => {
+          if (!p.layout) p.layout = 'image-top';
+          if (typeof p.imageCredit !== 'string') p.imageCredit = '';
+          if (typeof p.imageCreditUrl !== 'string') p.imageCreditUrl = '';
+        });
         if (!parsed.theme) parsed.theme = 'sunshine';
         return parsed;
       } catch (e) {
@@ -543,11 +577,31 @@
     function saveState() {
       try {
         localStorage.setItem('ebook-state', JSON.stringify(state));
+        lastSavedAt = Date.now();
         updateStorageBar();
       } catch (e) {
         showToast('Storage full — export as JSON before adding more', 'error', 5000);
       }
       scheduleFileWrite();
+    }
+
+    // Human-readable "X min ago" — local time, no Intl dependency for file:// reliability
+    function formatRelativeTime(ts) {
+      if (!ts) return 'Auto-save ready';
+      const diffMs = Date.now() - ts;
+      const sec = Math.floor(diffMs / 1000);
+      if (sec < 60) return 'just now';
+      const min = Math.floor(sec / 60);
+      if (min < 60) return min + ' min ago';
+      const hr = Math.floor(min / 60);
+      if (hr < 24) return hr + ' hr ago';
+      // Fallback: show local HH:MM for stale sessions
+      const d = new Date(ts);
+      const hh = d.getHours();
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      const ampm = hh >= 12 ? 'PM' : 'AM';
+      const hh12 = hh % 12 || 12;
+      return 'at ' + hh12 + ':' + mm + ' ' + ampm;
     }
 
     // ===== File System Access API (Chrome/Edge) =====
@@ -629,7 +683,9 @@
       const sizeStr = bytes < 1024 * 1024 ? `${kb} KB` : `${mb} MB`;
       const warning = bytes > 4 * 1024 * 1024 ? ' · ⚠️ near 5MB cap' : '';
       const fileInfo = fileHandle ? ` · 🔵 ${fileHandle.name}` : '';
-      document.getElementById('storageBar').textContent = `💾 Auto-saved · ${sizeStr}${warning}${fileInfo}`;
+      const when = lastSavedAt ? formatRelativeTime(lastSavedAt) : 'ready';
+      const prefix = lastSavedAt ? `💾 Saved ${when}` : '💾 Auto-save ready';
+      document.getElementById('storageBar').textContent = `${prefix} · ${sizeStr}${warning}${fileInfo}`;
     }
 
     // ===== Undo / Redo =====
@@ -681,6 +737,19 @@
     // ===== Utilities =====
     function escapeHtml(s) {
       return (s || '').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+
+    // Render the optional per-page image credit. Wraps in <a> if URL set.
+    // Returns '' when no credit is set so we never emit empty divs.
+    function creditHTML(page) {
+      const text = (page && page.imageCredit) ? page.imageCredit.trim() : '';
+      if (!text) return '';
+      const url = (page && page.imageCreditUrl) ? page.imageCreditUrl.trim() : '';
+      const safeText = escapeHtml(text);
+      if (url) {
+        return `<div class="credit"><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${safeText}</a></div>`;
+      }
+      return `<div class="credit">${safeText}</div>`;
     }
     function fileToDataURL(file) {
       return new Promise((resolve, reject) => {
@@ -802,6 +871,10 @@
             <input type="file" data-img="${i}" accept="image/*" />
             ${page.image ? `<button class="danger tiny" data-clearimg="${i}">Remove image</button>` : ''}
           </div>
+          <label>📷 Image Credit (optional)</label>
+          <input type="text" data-i="${i}" data-field="imageCredit" value="${escapeHtml(page.imageCredit || '')}" placeholder='&quot;Title&quot; by Author, CC BY 2.0' />
+          <label>🔗 Credit URL (optional)</label>
+          <input type="text" data-i="${i}" data-field="imageCreditUrl" value="${escapeHtml(page.imageCreditUrl || '')}" placeholder="https://..." />
         `;
         list.appendChild(card);
       });
@@ -988,17 +1061,20 @@
         const layoutClass = page.type === 'content' ? `layout-${page.layout || 'image-top'}` : '';
         div.className = 'pf-page' + (isCoverOrBack ? ' cover' : '') + (layoutClass ? ' ' + layoutClass : '');
 
+        const credit = creditHTML(page);
         if (page.type === 'cover') {
           div.innerHTML = `
             <h1>${escapeHtml(page.title || state.title || 'Untitled')}</h1>
             ${page.image ? `<img src="${page.image}" alt="cover" />` : ''}
             <div class="author">by ${escapeHtml(state.author || '')}</div>
+            ${credit}
           `;
         } else if (page.type === 'back') {
           div.innerHTML = `
             <h1>${escapeHtml(page.title || 'The End')}</h1>
             ${page.image ? `<img src="${page.image}" alt="" />` : ''}
             <p style="opacity:0.95">${escapeHtml(page.body).replace(/\n/g, '<br>')}</p>
+            ${credit}
           `;
         } else {
           const layout = page.layout || 'image-top';
@@ -1009,12 +1085,14 @@
                 ${page.title ? `<h2>${escapeHtml(page.title)}</h2>` : ''}
                 <p>${escapeHtml(page.body).replace(/\n/g, '<br>')}</p>
               </div>
+              ${credit}
               <span class="pagenum">${i}</span>
             `;
           } else if (layout === 'quote') {
             div.innerHTML = `
               ${page.title ? `<h2>${escapeHtml(page.title)}</h2>` : ''}
               <p>${escapeHtml(page.body).replace(/\n/g, '<br>')}</p>
+              ${credit}
               <span class="pagenum">${i}</span>
             `;
           } else if (layout === 'side' && page.image) {
@@ -1024,6 +1102,7 @@
                 ${page.title ? `<h2>${escapeHtml(page.title)}</h2>` : ''}
                 <p>${escapeHtml(page.body).replace(/\n/g, '<br>')}</p>
               </div>
+              ${credit}
               <span class="pagenum">${i}</span>
             `;
           } else {
@@ -1031,6 +1110,7 @@
               ${page.title ? `<h2>${escapeHtml(page.title)}</h2>` : ''}
               ${page.image ? `<img src="${page.image}" alt="" />` : ''}
               <p>${escapeHtml(page.body).replace(/\n/g, '<br>')}</p>
+              ${credit}
               <span class="pagenum">${i}</span>
             `;
           }
@@ -1215,27 +1295,45 @@
       state.pages.forEach((page, i) => {
         const div = document.createElement('div');
         div.className = 'print-page';
+        // Print credit block: subtle italic line at the bottom of the page
+        const creditText = (page.imageCredit || '').trim();
+        const creditUrl = (page.imageCreditUrl || '').trim();
+        const buildCredit = (color) => {
+          if (!creditText) return '';
+          const inner = creditUrl
+            ? `<a href="${escapeHtml(creditUrl)}" style="color:inherit; text-decoration:underline;">${escapeHtml(creditText)}</a>`
+            : escapeHtml(creditText);
+          return `<div style="position:absolute; bottom:24px; left:40px; right:40px; font-size:10px; font-style:italic; color:${color}; font-family:Nunito,sans-serif; text-align:left;">${inner}</div>`;
+        };
+        const lightCredit = buildCredit('rgba(255,255,255,0.75)');
+        const darkCredit = buildCredit('#9a8a7a');
+
         if (page.type === 'cover') {
           div.innerHTML = `
-            <div style="background:linear-gradient(135deg, ${gradStart}, ${gradEnd}); color:white; padding:80px; height:100%; min-height:90vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+            <div style="position:relative; background:linear-gradient(135deg, ${gradStart}, ${gradEnd}); color:white; padding:80px; height:100%; min-height:90vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
               <h1 style="font-family:Fredoka,sans-serif; font-size:56px; margin:0 0 20px 0;">${escapeHtml(page.title || state.title)}</h1>
               ${page.image ? `<img src="${page.image}" style="max-width:60%; max-height:50%; margin:20px 0; border-radius:12px;"/>` : ''}
               <div style="font-style:italic; opacity:0.9; margin-top:30px;">by ${escapeHtml(state.author)}</div>
+              ${lightCredit}
             </div>
           `;
         } else if (page.type === 'back') {
           div.innerHTML = `
-            <div style="background:linear-gradient(135deg, ${gradStart}, ${gradEnd}); color:white; padding:80px; height:100%; min-height:90vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+            <div style="position:relative; background:linear-gradient(135deg, ${gradStart}, ${gradEnd}); color:white; padding:80px; height:100%; min-height:90vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
               <h1 style="font-family:Fredoka,sans-serif; font-size:48px; margin:0 0 20px 0;">${escapeHtml(page.title || 'The End')}</h1>
               ${page.image ? `<img src="${page.image}" style="max-width:50%; max-height:40%; margin:20px 0; border-radius:12px;"/>` : ''}
               <p style="font-size:18px;">${escapeHtml(page.body).replace(/\n/g, '<br>')}</p>
+              ${lightCredit}
             </div>
           `;
         } else {
           div.innerHTML = `
-            <h2 style="font-family:Fredoka,sans-serif; font-size:36px; color:${accent}; margin-bottom:24px;">${escapeHtml(page.title)}</h2>
-            ${page.image ? `<img src="${page.image}" style="max-width:80%; max-height:50%; margin:20px auto; display:block; border-radius:8px;"/>` : ''}
-            <p style="font-size:18px; line-height:1.7;">${escapeHtml(page.body).replace(/\n/g, '<br>')}</p>
+            <div style="position:relative; min-height:90vh; padding-bottom:40px;">
+              <h2 style="font-family:Fredoka,sans-serif; font-size:36px; color:${accent}; margin-bottom:24px;">${escapeHtml(page.title)}</h2>
+              ${page.image ? `<img src="${page.image}" style="max-width:80%; max-height:50%; margin:20px auto; display:block; border-radius:8px;"/>` : ''}
+              <p style="font-size:18px; line-height:1.7;">${escapeHtml(page.body).replace(/\n/g, '<br>')}</p>
+              ${darkCredit}
+            </div>
           `;
         }
         printRoot.appendChild(div);
@@ -1252,21 +1350,31 @@
       if (page.type === 'cover' || page.type === 'back') classes.push('cover');
       if (page.type === 'content') classes.push('layout-' + (page.layout || 'image-top'));
 
+      // Build the credit block once for reuse across all layout branches
+      const creditText = (page.imageCredit || '').trim();
+      const creditUrl = (page.imageCreditUrl || '').trim();
+      let credit = '';
+      if (creditText) {
+        credit = creditUrl
+          ? `<div class="credit"><a href="${e(creditUrl)}" target="_blank" rel="noopener noreferrer">${e(creditText)}</a></div>`
+          : `<div class="credit">${e(creditText)}</div>`;
+      }
+
       let inner = '';
       if (page.type === 'cover') {
-        inner = `<h1>${e(page.title || state.title || 'Untitled')}</h1>${page.image ? `<img src="${page.image}" alt="cover" />` : ''}<div class="author">by ${e(state.author || '')}</div>`;
+        inner = `<h1>${e(page.title || state.title || 'Untitled')}</h1>${page.image ? `<img src="${page.image}" alt="cover" />` : ''}<div class="author">by ${e(state.author || '')}</div>${credit}`;
       } else if (page.type === 'back') {
-        inner = `<h1>${e(page.title || 'The End')}</h1>${page.image ? `<img src="${page.image}" alt="" />` : ''}<p>${e(page.body).replace(/\n/g, '<br>')}</p>`;
+        inner = `<h1>${e(page.title || 'The End')}</h1>${page.image ? `<img src="${page.image}" alt="" />` : ''}<p>${e(page.body).replace(/\n/g, '<br>')}</p>${credit}`;
       } else {
         const layout = page.layout || 'image-top';
         if (layout === 'fullbleed' && page.image) {
-          inner = `<img src="${page.image}" alt="" /><div class="caption">${page.title ? `<h2>${e(page.title)}</h2>` : ''}<p>${e(page.body).replace(/\n/g, '<br>')}</p></div>`;
+          inner = `<img src="${page.image}" alt="" /><div class="caption">${page.title ? `<h2>${e(page.title)}</h2>` : ''}<p>${e(page.body).replace(/\n/g, '<br>')}</p></div>${credit}`;
         } else if (layout === 'quote') {
-          inner = `${page.title ? `<h2>${e(page.title)}</h2>` : ''}<p>${e(page.body).replace(/\n/g, '<br>')}</p>`;
+          inner = `${page.title ? `<h2>${e(page.title)}</h2>` : ''}<p>${e(page.body).replace(/\n/g, '<br>')}</p>${credit}`;
         } else if (layout === 'side' && page.image) {
-          inner = `<img src="${page.image}" alt="" /><div class="text">${page.title ? `<h2>${e(page.title)}</h2>` : ''}<p>${e(page.body).replace(/\n/g, '<br>')}</p></div>`;
+          inner = `<img src="${page.image}" alt="" /><div class="text">${page.title ? `<h2>${e(page.title)}</h2>` : ''}<p>${e(page.body).replace(/\n/g, '<br>')}</p></div>${credit}`;
         } else {
-          inner = `${page.title ? `<h2>${e(page.title)}</h2>` : ''}${page.image ? `<img src="${page.image}" alt="" />` : ''}<p>${e(page.body).replace(/\n/g, '<br>')}</p>`;
+          inner = `${page.title ? `<h2>${e(page.title)}</h2>` : ''}${page.image ? `<img src="${page.image}" alt="" />` : ''}<p>${e(page.body).replace(/\n/g, '<br>')}</p>${credit}`;
         }
       }
       return `<div class="${classes.join(' ')}">${inner}</div>`;
@@ -1313,6 +1421,11 @@ h1,h2,h3{font-family:'Fredoka',system-ui,sans-serif;font-weight:600;letter-spaci
 .pf-page.layout-side{display:flex !important;gap:24px;align-items:flex-start}
 .pf-page.layout-side>img{flex:0 0 45%;max-width:45%;max-height:75%;min-width:0;margin:0;align-self:center}
 .pf-page.layout-side .text{flex:1;min-width:0;padding-top:4px}
+.pf-page .credit{position:absolute;bottom:10px;left:18px;max-width:calc(100% - 70px);font-size:9px;line-height:1.3;font-style:italic;color:var(--ink-fade);font-family:'Nunito',sans-serif;letter-spacing:.1px}
+.pf-page .credit a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.pf-page.cover .credit,.pf-page.layout-fullbleed .credit{color:rgba(255,255,255,.7)}
+.pf-page.cover .credit{left:0;right:0;bottom:8px;text-align:center;max-width:100%;padding:0 20px;z-index:2}
+.pf-page.layout-fullbleed .credit{bottom:6px;left:28px;z-index:2}
 .nav{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.85);backdrop-filter:blur(8px);padding:8px 12px;border-radius:14px;box-shadow:0 6px 20px rgba(58,46,38,.18);font-family:'Fredoka',sans-serif;font-size:13px;color:var(--ink)}
 .nav button{background:transparent;border:none;cursor:pointer;padding:8px 12px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);transition:background .15s}
 .nav button:hover{background:rgba(58,46,38,.08)}
@@ -1438,10 +1551,15 @@ h1,h2,h3{font-family:'Fredoka',system-ui,sans-serif;font-weight:600;letter-spaci
     });
 
     // ===== Boot =====
+    // If a state was rehydrated from localStorage, show "just now" on first render
+    // (the data did get loaded fresh — not strictly a save, but accurate-feeling for the user)
+    if (localStorage.getItem('ebook-state')) lastSavedAt = Date.now();
     applyTheme();
     renderEditor();
     updateUndoButtons();
     setTimeout(renderPreview, 60);
+    // Refresh the storage bar's relative time every 30s so it shows "1 min ago" / "2 min ago" without re-saving
+    setInterval(updateStorageBar, 30000);
   </script>
 </body>
 </html>
