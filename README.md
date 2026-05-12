@@ -39,13 +39,19 @@ A free, single-file children's-book + interactive eBook editor that runs entirel
 ## 🚀 Quick start
 
 ```
-1. Clone or download this repo
-2. Double-click index.html
+1. Clone or download this repo (just need index.html)
+2. Double-click index.html — opens in your default browser
 3. Edit your book in the left panel; preview animates on the right
 4. Click 📖 Export Book to download a standalone shareable HTML
 ```
 
-No `npm install`. No build step. The whole app is one self-contained file.
+No `npm install`. No build step. No accounts. The whole app is one self-contained file.
+
+### 📦 Portability — works on any modern computer
+
+You can email or USB-transfer `index.html` to anyone. They just double-click and it runs in Chrome, Edge, Firefox, or Safari. The only thing they need is **internet on first open** — to load StPageFlip (page-flip engine) and the Google Fonts. After that first load, browser cache makes it work offline forever.
+
+Their work auto-saves to their browser (and optionally to a real file via 💾 Save to file in Chrome/Edge). No data leaves their machine.
 
 ---
 
