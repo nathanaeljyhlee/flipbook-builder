@@ -109,6 +109,6 @@ MIT — see [LICENSE](./LICENSE). Use it, fork it, ship it, sell what you make w
 
 ## 🐦 Who built this
 
-Built by [Nathanael Lee](https://github.com/nathanaeljyhlee) (Babson MBA '27) in collaboration with [Claude Code](https://claude.com/claude-code). Started as a one-day sprint to build an animated children's book for a science class final — turned into a tool that fills a real gap in the open-source education space.
+Built by [Nathanael Lee](https://github.com/nathanaeljyhlee) (Babson MBA '27) in collaboration with [Claude Code](https://claude.com/claude-code). Started as a one-day sprint to build an animated children's book for a friend's science class final — turned into a tool that fills a real gap in the open-source education space.
 
 Contributions, issues, and forks welcome.
