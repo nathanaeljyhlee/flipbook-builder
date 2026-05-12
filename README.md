@@ -38,14 +38,18 @@ A free, single-file children's-book + interactive eBook editor that runs entirel
 
 ## 🚀 Quick start
 
+### 📥 [Download `index.html` (latest release)](https://github.com/nathanaeljyhlee/flipbook-builder/releases/latest/download/index.html)
+
+That's the whole product. One file. No clone, no install, no signup.
+
 ```
-1. Clone or download this repo (just need index.html)
-2. Double-click index.html — opens in your default browser
+1. Click the download link above (or grab index.html from any release)
+2. Double-click it — opens in your default browser
 3. Edit your book in the left panel; preview animates on the right
 4. Click 📖 Export Book to download a standalone shareable HTML
 ```
 
-No `npm install`. No build step. No accounts. The whole app is one self-contained file.
+[📊 Release downloads + history](https://github.com/nathanaeljyhlee/flipbook-builder/releases) · No `npm install`. No build step. No accounts. The whole app is one self-contained file (~73KB).
 
 ---
 
