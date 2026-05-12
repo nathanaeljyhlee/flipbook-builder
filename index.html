@@ -470,8 +470,10 @@
           <button id="redoBtn" class="secondary tiny" title="Redo (Ctrl+Y)">↷</button>
         </div>
         <button id="exportBookBtn" class="primary">📖 Export Book</button>
-        <button id="exportBtn" class="secondary">📥 Export JSON</button>
-        <button id="importBtn" class="secondary">📤 Import JSON</button>
+        <button id="saveToFileBtn" class="secondary" title="Auto-save edits to a real file on disk">💾 Save to file</button>
+        <button id="openFromFileBtn" class="secondary" title="Open and auto-save to an existing book file">📂 Open file</button>
+        <button id="exportBtn" class="ghost">📥 Export JSON</button>
+        <button id="importBtn" class="ghost">📤 Import JSON</button>
         <button id="printBtn" class="ghost">🖨️ Print PDF</button>
         <button id="resetBtn" class="ghost">♻️ Reset</button>
         <input type="file" id="importInput" accept=".json" style="display:none" />
@@ -520,6 +522,8 @@
     let undoStack = [];
     let redoStack = [];
     let lastSnapTime = 0;
+    let fileHandle = null;        // FileSystemFileHandle when linked to a real file
+    let fileWriteTimer = null;
 
     // ===== Persistence =====
     function loadState() {
@@ -543,6 +547,79 @@
       } catch (e) {
         showToast('Storage full — export as JSON before adding more', 'error', 5000);
       }
+      scheduleFileWrite();
+    }
+
+    // ===== File System Access API (Chrome/Edge) =====
+    const FS_API_SUPPORTED = typeof window.showSaveFilePicker === 'function';
+
+    async function pickSaveLocation() {
+      if (!FS_API_SUPPORTED) {
+        showToast('Browser does not support auto-save to file. Use Chrome or Edge.', 'warn', 4500);
+        return;
+      }
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: ((state.title || 'ebook').replace(/[^a-z0-9]/gi, '_') || 'ebook') + '.json',
+          types: [{ description: 'eBook JSON file', accept: { 'application/json': ['.json'] } }]
+        });
+        fileHandle = handle;
+        await writeToFile();
+        updateStorageBar();
+        showToast('💾 Auto-saving to ' + handle.name, 'success', 3500);
+      } catch (e) {
+        if (e && e.name !== 'AbortError') showToast('Save failed: ' + (e.message || e), 'error');
+      }
+    }
+
+    async function pickOpenLocation() {
+      if (typeof window.showOpenFilePicker !== 'function') {
+        showToast('Browser does not support open-from-file. Use Chrome or Edge.', 'warn', 4500);
+        return;
+      }
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [{ description: 'eBook JSON file', accept: { 'application/json': ['.json'] } }],
+          multiple: false
+        });
+        const file = await handle.getFile();
+        const text = await file.text();
+        const imported = JSON.parse(text);
+        if (!imported.pages || !Array.isArray(imported.pages)) throw new Error('Not a valid book file');
+        pushUndoNow();
+        state = imported;
+        if (!state.theme) state.theme = 'sunshine';
+        state.pages.forEach(p => { if (!p.layout) p.layout = 'image-top'; });
+        lastPageViewed = 0;
+        fileHandle = handle;
+        saveState();
+        applyTheme();
+        renderEditor();
+        renderPreview();
+        showToast('📂 Linked to ' + handle.name + ' — auto-saving', 'success', 3500);
+      } catch (e) {
+        if (e && e.name !== 'AbortError') showToast('Open failed: ' + (e.message || e), 'error');
+      }
+    }
+
+    async function writeToFile() {
+      if (!fileHandle) return;
+      try {
+        const writable = await fileHandle.createWritable();
+        await writable.write(JSON.stringify(state, null, 2));
+        await writable.close();
+      } catch (e) {
+        console.error('File write failed:', e);
+        showToast('⚠️ File save error — unlinked. Try clicking Save to file again.', 'error', 5000);
+        fileHandle = null;
+        updateStorageBar();
+      }
+    }
+
+    function scheduleFileWrite() {
+      if (!fileHandle) return;
+      clearTimeout(fileWriteTimer);
+      fileWriteTimer = setTimeout(writeToFile, 500);
     }
 
     function updateStorageBar() {
@@ -551,7 +628,8 @@
       const mb = (bytes / 1024 / 1024).toFixed(2);
       const sizeStr = bytes < 1024 * 1024 ? `${kb} KB` : `${mb} MB`;
       const warning = bytes > 4 * 1024 * 1024 ? ' · ⚠️ near 5MB cap' : '';
-      document.getElementById('storageBar').textContent = `💾 Auto-saved · ${sizeStr}${warning}`;
+      const fileInfo = fileHandle ? ` · 🔵 ${fileHandle.name}` : '';
+      document.getElementById('storageBar').textContent = `💾 Auto-saved · ${sizeStr}${warning}${fileInfo}`;
     }
 
     // ===== Undo / Redo =====
@@ -1113,6 +1191,19 @@
       try { exportBookHTML(); }
       catch (e) { showToast('Export failed: ' + (e?.message || e), 'error', 5000); console.error(e); }
     });
+
+    document.getElementById('saveToFileBtn').addEventListener('click', () => { pickSaveLocation(); });
+    document.getElementById('openFromFileBtn').addEventListener('click', () => { pickOpenLocation(); });
+
+    // Hide file buttons gracefully on unsupported browsers
+    if (!FS_API_SUPPORTED) {
+      const sBtn = document.getElementById('saveToFileBtn');
+      const oBtn = document.getElementById('openFromFileBtn');
+      sBtn.title = 'Not supported in this browser. Use Chrome or Edge.';
+      oBtn.title = 'Not supported in this browser. Use Chrome or Edge.';
+      sBtn.style.opacity = '0.5';
+      oBtn.style.opacity = '0.5';
+    }
 
     function buildPrintBook() {
       const printRoot = document.getElementById('printBook');

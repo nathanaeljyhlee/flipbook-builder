@@ -25,7 +25,8 @@ A free, single-file children's-book + interactive eBook editor that runs entirel
 - 🗜️ **Automatic image compression** — phone photos shrink 6MB → ~70KB on upload
 - ↕️ **Drag-to-reorder pages** — front cover + back cover stay pinned
 - 🧬 **Duplicate, delete, undo / redo** (Ctrl+Z, Ctrl+Y, 20-state ring buffer)
-- 💾 **Auto-save** to your browser; export / import as JSON for backup
+- 💾 **Auto-save** to your browser, AND optionally to a real file on disk (Chrome/Edge — uses the File System Access API; survives browser nukes, syncs via Drive/OneDrive folders)
+- 📤 Export / import as JSON for manual backup
 - 📖 **Export as standalone animated HTML** — shareable single file with full page-turn animation preserved
 - 🖨️ **Print to PDF** via browser print dialog
 - 🎬 **Present mode** — fullscreen, ESC to exit
