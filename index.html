@@ -138,6 +138,28 @@
     .theme-swatch.forest   { background: linear-gradient(135deg, #88b864, #4a7a3a); }
     .theme-swatch.galaxy   { background: linear-gradient(135deg, #6b5bb5, #2e2452); }
 
+    /* Aspect-ratio picker — board-book proportions selector */
+    .aspect-picker { display: flex; gap: 8px; margin-top: 14px; }
+    .aspect-btn {
+      flex: 1;
+      background: var(--surface);
+      border: 1.5px solid var(--line-strong);
+      color: var(--ink);
+      padding: 8px 6px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'Fredoka', sans-serif;
+      cursor: pointer;
+      border-radius: var(--radius);
+      transition: transform var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+    }
+    .aspect-btn:hover { transform: translateY(-1px); }
+    .aspect-btn[data-active="true"] {
+      border-color: var(--ink);
+      background: var(--bg-deep);
+      transform: translateY(-2px);
+    }
+
     /* Page cards */
     .page-card {
       background: var(--surface);
@@ -295,11 +317,16 @@
       color: var(--ink-fade);
       font-family: 'Nunito', sans-serif;
       letter-spacing: 0.1px;
+      /* Force long URLs to wrap inside the box so they don't bleed into the pagenum area */
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
     .pf-page .credit a {
       color: inherit;
       text-decoration: underline;
       text-underline-offset: 2px;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
     .pf-page.cover .credit,
     .pf-page.layout-fullbleed .credit {
@@ -486,6 +513,13 @@
           <button class="theme-swatch forest"   data-theme="forest"   title="Forest 🌲"></button>
           <button class="theme-swatch galaxy"   data-theme="galaxy"   title="Galaxy 🌌"></button>
         </div>
+
+        <label>📐 Shape</label>
+        <div class="aspect-picker">
+          <button class="aspect-btn" data-aspect="0.72" title="Tall — chapter-book proportions">📕 Tall</button>
+          <button class="aspect-btn" data-aspect="1.2"  title="Board — wider, board-book proportions">📒 Board</button>
+          <button class="aspect-btn" data-aspect="1.5"  title="Wide — landscape picture-book spread">📰 Wide</button>
+        </div>
       </div>
 
       <div id="pagesList"></div>
@@ -535,6 +569,7 @@
       title: 'My Science Book',
       author: 'Your Name',
       theme: 'sunshine',
+      bookAspect: 0.72,
       pages: [
         { type: 'cover',   title: '',             body: '', image: null, layout: 'image-top', imageCredit: '', imageCreditUrl: '' },
         { type: 'content', title: 'Introduction', body: 'Welcome to my book! Tap the editor on the left to change this text or add a photo.', image: null, layout: 'image-top', imageCredit: '', imageCreditUrl: '' },
@@ -568,6 +603,7 @@
           if (typeof p.imageCreditUrl !== 'string') p.imageCreditUrl = '';
         });
         if (!parsed.theme) parsed.theme = 'sunshine';
+        if (typeof parsed.bookAspect !== 'number') parsed.bookAspect = 0.72;
         return parsed;
       } catch (e) {
         return structuredClone(DEFAULT_STATE);
@@ -810,6 +846,11 @@
       document.documentElement.setAttribute('data-theme', state.theme || 'sunshine');
       document.querySelectorAll('.theme-swatch').forEach(s => {
         s.setAttribute('data-active', s.dataset.theme === (state.theme || 'sunshine'));
+      });
+      // Mirror: highlight the active aspect button
+      const currentAspect = state.bookAspect || 0.72;
+      document.querySelectorAll('.aspect-btn').forEach(b => {
+        b.setAttribute('data-active', Math.abs(parseFloat(b.dataset.aspect) - currentAspect) < 0.05);
       });
     }
 
@@ -1118,11 +1159,12 @@
         container.appendChild(div);
       });
 
-      // Scale flipbook to fill the available preview area while keeping a portrait book aspect ratio.
+      // Scale flipbook to fill the available preview area. Aspect is user-configurable
+      // via state.bookAspect (0.72 tall / 1.2 board / 1.5 wide). Defaults to 0.72.
       const previewEl = document.querySelector('.preview');
       const availW = Math.max(previewEl.clientWidth - 40, 400);
       const availH = Math.max(previewEl.clientHeight - 130, 360);
-      const aspect = 0.72; // pageW / pageH
+      const aspect = state.bookAspect || 0.72;
       let pageH = availH;
       let pageW = pageH * aspect;
       if (pageW * 2 > availW) {
@@ -1184,6 +1226,20 @@
         applyTheme();
         schedulePreviewRender();
         showToast(`🎨 Theme: ${s.dataset.theme}`, 'info', 1200);
+      });
+    });
+
+    document.querySelectorAll('.aspect-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        const newAspect = parseFloat(b.dataset.aspect);
+        if (Math.abs((state.bookAspect || 0.72) - newAspect) < 0.05) return;
+        pushUndoNow();
+        state.bookAspect = newAspect;
+        saveState();
+        applyTheme();
+        renderPreview();
+        const label = b.textContent.replace(/[^\w\s]/g, '').trim();
+        showToast(`📐 Shape: ${label}`, 'info', 1200);
       });
     });
     document.getElementById('addPage').addEventListener('click', () => {
@@ -1421,8 +1477,8 @@ h1,h2,h3{font-family:'Fredoka',system-ui,sans-serif;font-weight:600;letter-spaci
 .pf-page.layout-side{display:flex !important;gap:24px;align-items:flex-start}
 .pf-page.layout-side>img{flex:0 0 45%;max-width:45%;max-height:75%;min-width:0;margin:0;align-self:center}
 .pf-page.layout-side .text{flex:1;min-width:0;padding-top:4px}
-.pf-page .credit{position:absolute;bottom:10px;left:18px;max-width:calc(100% - 70px);font-size:9px;line-height:1.3;font-style:italic;color:var(--ink-fade);font-family:'Nunito',sans-serif;letter-spacing:.1px}
-.pf-page .credit a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.pf-page .credit{position:absolute;bottom:10px;left:18px;max-width:calc(100% - 70px);font-size:9px;line-height:1.3;font-style:italic;color:var(--ink-fade);font-family:'Nunito',sans-serif;letter-spacing:.1px;overflow-wrap:anywhere;word-break:break-word}
+.pf-page .credit a{color:inherit;text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere;word-break:break-word}
 .pf-page.cover .credit,.pf-page.layout-fullbleed .credit{color:rgba(255,255,255,.7)}
 .pf-page.cover .credit{left:0;right:0;bottom:8px;text-align:center;max-width:100%;padding:0 20px;z-index:2}
 .pf-page.layout-fullbleed .credit{bottom:6px;left:28px;z-index:2}
@@ -1437,7 +1493,7 @@ h1,h2,h3{font-family:'Fredoka',system-ui,sans-serif;font-weight:600;letter-spaci
 
       const viewerScript = `
 (function(){
-  var aspect = 0.72;
+  var aspect = ${state.bookAspect || 0.72};
   var book = document.getElementById('flipbook');
   var pf = null;
   function size() {
