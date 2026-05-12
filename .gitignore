@@ -1,0 +1,21 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local artifacts (test exports, dev server logs)
+exported-test.html
+*.local.json
+*.test.html
+
+# Node (if anyone adds tooling later)
+node_modules/
+.env
+.env.local
+npm-debug.log*

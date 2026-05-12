@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="sunshine">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📖 eBook Builder</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='80' font-size='80'%3E📖%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ===== Design Tokens ===== */
+    :root {
+      --bg: #fbf6ec;
+      --bg-deep: #f3ebd9;
+      --ink: #3a2e26;
+      --ink-soft: #6b574c;
+      --ink-fade: #a39181;
+      --line: #e8dec8;
+      --line-strong: #d9c9aa;
+      --surface: #ffffff;
+      --surface-warm: #fffaf0;
+      --accent: #ff8a4c;
+      --success: #2d5e36;
+      --warn: #b87a1f;
+      --danger: #d44a3c;
+      --tint-cover: #ffe4ec;
+      --tint-cover-border: #f9bcce;
+      --tint-back: #ece4f5;
+      --tint-back-border: #c5b3dc;
+      --theme-grad-start: #fbb454;
+      --theme-grad-end: #f77b56;
+      --theme-page-accent: #f77b56;
+      --theme-page-tint: #fff7eb;
+      --radius-sm: 6px;
+      --radius: 12px;
+      --radius-lg: 20px;
+      --shadow-sm: 0 1px 2px rgba(58, 46, 38, 0.08);
+      --shadow-md: 0 4px 14px rgba(58, 46, 38, 0.10);
+      --shadow-lg: 0 12px 40px rgba(58, 46, 38, 0.18);
+      --shadow-book: 0 24px 60px -10px rgba(58, 46, 38, 0.35), 0 8px 20px -8px rgba(58, 46, 38, 0.25);
+      --t-fast: 0.15s;
+      --t: 0.25s;
+      --easing: cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    [data-theme="sunshine"] { --theme-grad-start:#fbb454; --theme-grad-end:#f77b56; --theme-page-accent:#f77b56; --theme-page-tint:#fff7eb; }
+    [data-theme="ocean"]    { --theme-grad-start:#4fb6c4; --theme-grad-end:#2c7a8d; --theme-page-accent:#2c7a8d; --theme-page-tint:#ebf6f8; }
+    [data-theme="forest"]   { --theme-grad-start:#88b864; --theme-grad-end:#4a7a3a; --theme-page-accent:#4a7a3a; --theme-page-tint:#f0f5e8; }
+    [data-theme="galaxy"]   { --theme-grad-start:#6b5bb5; --theme-grad-end:#2e2452; --theme-page-accent:#8a73d4; --theme-page-tint:#f3effb; }
+
+    /* ===== Base ===== */
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: 'Nunito', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      overflow: hidden;
+    }
+    h1, h2, h3, .display {
+      font-family: 'Fredoka', system-ui, sans-serif;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .app { display: flex; height: 100vh; }
+
+    /* ===== Editor ===== */
+    .editor {
+      width: 440px;
+      flex-shrink: 0;
+      background: var(--surface-warm);
+      border-right: 1px solid var(--line);
+      overflow-y: auto;
+      padding: 28px 24px 80px 24px;
+    }
+    .editor-header h1 { margin: 0; font-size: 26px; color: var(--ink); }
+    .editor-header .subtitle { font-size: 13px; color: var(--ink-soft); margin: 4px 0 24px 0; }
+
+    .meta {
+      background: var(--bg-deep);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      margin-bottom: 20px;
+      border: 1px solid var(--line);
+    }
+    .meta label, .page-card label {
+      display: block;
+      font-size: 10px;
+      color: var(--ink-soft);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 4px;
+    }
+    .meta input, .page-card input[type="text"], .page-card textarea, .page-card select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-family: inherit;
+      background: var(--surface);
+      color: var(--ink);
+      transition: border-color var(--t-fast), box-shadow var(--t-fast);
+    }
+    .meta input + label { margin-top: 12px; }
+    .meta input:focus, .page-card input:focus, .page-card textarea:focus, .page-card select:focus {
+      outline: none;
+      border-color: var(--theme-page-accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-page-accent) 20%, transparent);
+    }
+
+    /* Theme picker */
+    .theme-picker { display: flex; gap: 8px; margin-top: 14px; }
+    .theme-swatch {
+      flex: 1;
+      height: 38px;
+      border-radius: var(--radius);
+      border: 2px solid transparent;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform var(--t-fast), border-color var(--t-fast);
+      padding: 0;
+    }
+    .theme-swatch:hover { transform: translateY(-2px); }
+    .theme-swatch[data-active="true"] { border-color: var(--ink); transform: translateY(-2px); }
+    .theme-swatch[data-active="true"]::after {
+      content: '✓';
+      position: absolute; bottom: 2px; right: 4px;
+      color: white; font-size: 12px; font-weight: 700;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+    .theme-swatch.sunshine { background: linear-gradient(135deg, #fbb454, #f77b56); }
+    .theme-swatch.ocean    { background: linear-gradient(135deg, #4fb6c4, #2c7a8d); }
+    .theme-swatch.forest   { background: linear-gradient(135deg, #88b864, #4a7a3a); }
+    .theme-swatch.galaxy   { background: linear-gradient(135deg, #6b5bb5, #2e2452); }
+
+    /* Page cards */
+    .page-card {
+      background: var(--surface);
+      border: 1.5px solid var(--line);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      transition: transform var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast);
+      position: relative;
+    }
+    .page-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .page-card[data-type="cover"] { background: var(--tint-cover); border-color: var(--tint-cover-border); }
+    .page-card[data-type="back"]  { background: var(--tint-back);  border-color: var(--tint-back-border);  }
+    .page-card.drop-above { box-shadow: 0 -3px 0 var(--theme-page-accent); }
+    .page-card.drop-below { box-shadow: 0 3px 0 var(--theme-page-accent); }
+    .page-card.dragging { opacity: 0.4; }
+
+    .page-card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px; gap: 8px;
+    }
+    .page-card-header strong {
+      font-family: 'Fredoka', sans-serif;
+      font-weight: 600; font-size: 14px; color: var(--ink); flex: 1;
+    }
+    .drag-handle {
+      cursor: grab; color: var(--ink-fade); font-size: 16px;
+      user-select: none; padding: 0 4px;
+    }
+    .drag-handle:active { cursor: grabbing; }
+    .page-card-actions { display: flex; gap: 4px; align-items: center; }
+    .page-card label { margin-top: 10px; }
+    .page-card textarea { resize: vertical; min-height: 70px; line-height: 1.5; background: var(--surface-warm); }
+    .page-card select {
+      background: var(--surface-warm);
+      cursor: pointer;
+      appearance: none;
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8"><path d="M1 1l5 5 5-5" stroke="%236b574c" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>');
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+    }
+    .page-card input[type="file"] { font-size: 12px; color: var(--ink-soft); padding: 4px 0; }
+    .thumb {
+      display: inline-block; max-width: 80px; max-height: 80px;
+      border-radius: var(--radius); vertical-align: middle; margin-right: 8px;
+      border: 1px solid var(--line); box-shadow: var(--shadow-sm);
+    }
+
+    /* Buttons */
+    button {
+      background: var(--ink); color: var(--surface-warm);
+      border: none; padding: 10px 16px; border-radius: var(--radius);
+      cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit;
+      transition: transform var(--t-fast), background var(--t-fast), box-shadow var(--t-fast);
+    }
+    button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    button:active { transform: translateY(0); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.primary { background: var(--theme-page-accent); color: white; }
+    button.secondary { background: var(--bg-deep); color: var(--ink); }
+    button.ghost { background: transparent; color: var(--ink-soft); padding: 6px 10px; font-size: 12px; }
+    button.ghost:hover { background: var(--bg-deep); color: var(--ink); }
+    button.danger { background: transparent; color: var(--danger); padding: 6px 10px; font-size: 12px; }
+    button.danger:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
+    button.tiny { padding: 4px 8px; font-size: 11px; }
+    button.add-btn {
+      width: 100%;
+      background: var(--theme-page-tint);
+      color: var(--theme-page-accent);
+      border: 2px dashed color-mix(in srgb, var(--theme-page-accent) 50%, transparent);
+      padding: 14px; font-weight: 700; margin-bottom: 10px;
+    }
+    button.add-btn:hover {
+      background: color-mix(in srgb, var(--theme-page-accent) 12%, var(--theme-page-tint));
+      border-color: var(--theme-page-accent);
+    }
+
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+    .undo-group { display: flex; gap: 4px; }
+    .storage-bar { font-size: 11px; color: var(--ink-fade); margin-top: 14px; padding-top: 10px; border-top: 1px dashed var(--line); }
+
+    /* ===== Preview ===== */
+    .preview {
+      flex: 1;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 18px 24px;
+      background: var(--bg);
+      background-image:
+        radial-gradient(ellipse at 20% 30%, color-mix(in srgb, var(--theme-grad-start) 10%, transparent), transparent 50%),
+        radial-gradient(ellipse at 80% 70%, color-mix(in srgb, var(--theme-grad-end) 10%, transparent), transparent 50%);
+      position: relative;
+    }
+    .preview-label {
+      font-family: 'Fredoka', sans-serif;
+      font-size: 11px; color: var(--ink-fade);
+      letter-spacing: 1.5px; text-transform: uppercase;
+      margin: 0 0 12px 0; font-weight: 600;
+    }
+    #flipbook-wrap { filter: drop-shadow(var(--shadow-book)); }
+    #flipbook { margin: 0 auto; }
+
+    /* Flipbook pages */
+    .pf-page {
+      background: var(--surface);
+      padding: 36px 32px;
+      overflow: hidden;
+      position: relative;
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 0.7 0 0 0 0 0.65 0 0 0 0 0.55 0 0 0 0.08 0"/></filter><rect width="100%25" height="100%25" filter="url(%23n)"/></svg>');
+    }
+    .pf-page.cover {
+      background: linear-gradient(135deg, var(--theme-grad-start), var(--theme-grad-end));
+      color: white;
+      /* !important needed: StPageFlip injects inline display:block on every page element */
+      display: flex !important; align-items: center; justify-content: center;
+      flex-direction: column; text-align: center; padding: 36px 30px;
+    }
+    .pf-page.cover::before {
+      content: ''; position: absolute; inset: 0;
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.06 0"/></filter><rect width="100%25" height="100%25" filter="url(%23n)"/></svg>');
+      pointer-events: none;
+    }
+    .pf-page.cover > * { position: relative; z-index: 1; }
+    .pf-page.cover h1 {
+      font-size: 30px; margin: 0 0 12px 0; line-height: 1.15;
+      font-weight: 700; text-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .pf-page.cover .author {
+      font-size: 13px; opacity: 0.95; margin-top: 14px;
+      font-style: italic; font-family: 'Nunito', sans-serif; letter-spacing: 0.5px;
+    }
+    .pf-page.cover img {
+      max-width: 65%; max-height: 45%; margin: 14px 0;
+      border-radius: 12px; object-fit: contain;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+
+    .pf-page h2 {
+      font-size: 22px; margin: 0 0 14px 0;
+      color: var(--theme-page-accent); font-weight: 600;
+    }
+    .pf-page p { font-size: 14px; line-height: 1.7; color: var(--ink); margin: 0 0 12px 0; }
+    .pf-page img { max-width: 100%; border-radius: 8px; display: block; object-fit: contain; }
+    .pf-page .pagenum {
+      position: absolute; bottom: 14px; right: 20px;
+      font-size: 11px; color: var(--ink-fade);
+      font-family: 'Fredoka', sans-serif;
+    }
+
+    .pf-page.layout-image-top img { max-height: 45%; margin: 0 auto 16px auto; }
+
+    .pf-page.layout-fullbleed { padding: 0; }
+    .pf-page.layout-fullbleed > img {
+      width: 100%; height: 100%; object-fit: cover;
+      border-radius: 0; position: absolute; inset: 0;
+    }
+    .pf-page.layout-fullbleed .caption {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.85), rgba(0,0,0,0.4) 70%, transparent);
+      color: white; padding: 30px 28px 24px 28px; z-index: 1;
+    }
+    .pf-page.layout-fullbleed .caption h2 { color: white; margin-bottom: 6px; }
+    .pf-page.layout-fullbleed .caption p { color: rgba(255,255,255,0.95); font-size: 13px; margin: 0; }
+    .pf-page.layout-fullbleed .pagenum { color: rgba(255,255,255,0.85); z-index: 1; }
+
+    .pf-page.layout-quote {
+      display: flex !important; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 50px 40px;
+    }
+    .pf-page.layout-quote h2 {
+      font-size: 26px; line-height: 1.3;
+      color: var(--theme-page-accent); margin-bottom: 18px;
+    }
+    .pf-page.layout-quote p { font-size: 16px; line-height: 1.6; color: var(--ink-soft); max-width: 90%; }
+    .pf-page.layout-quote::before {
+      content: '"'; position: absolute; top: 20px; left: 30px;
+      font-family: 'Fredoka', serif; font-size: 90px; line-height: 1;
+      color: color-mix(in srgb, var(--theme-page-accent) 30%, transparent);
+    }
+
+    .pf-page.layout-side {
+      display: flex !important;
+      gap: 24px;
+      align-items: flex-start;
+    }
+    .pf-page.layout-side > img {
+      flex: 0 0 45%;
+      max-width: 45%;
+      max-height: 75%;
+      min-width: 0;
+      margin: 0;
+      align-self: center;
+    }
+    .pf-page.layout-side .text {
+      flex: 1;
+      min-width: 0;
+      padding-top: 4px;
+    }
+
+    .empty-flip {
+      background: var(--surface);
+      border: 2px dashed var(--line-strong);
+      border-radius: var(--radius-lg);
+      padding: 80px 40px; text-align: center;
+      color: var(--ink-soft); max-width: 400px;
+    }
+    .empty-flip .icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-flip h3 { margin: 0 0 8px 0; font-family: 'Fredoka', sans-serif; color: var(--ink); }
+
+    /* Nav */
+    .nav {
+      margin-top: 14px; display: flex; gap: 12px; align-items: center;
+      color: var(--ink); font-size: 13px; font-family: 'Fredoka', sans-serif;
+    }
+    .nav button {
+      background: var(--surface-warm); color: var(--ink);
+      border: 1px solid var(--line-strong);
+    }
+    .nav button:hover { background: var(--surface); }
+    #pageInfo { font-variant-numeric: tabular-nums; color: var(--ink-soft); padding: 0 8px; }
+
+    /* Toasts */
+    .toast-stack {
+      position: fixed; bottom: 20px; right: 20px;
+      display: flex; flex-direction: column; gap: 8px;
+      z-index: 9999; pointer-events: none;
+    }
+    .toast {
+      background: var(--ink); color: var(--surface-warm);
+      padding: 12px 18px; border-radius: var(--radius);
+      font-size: 13px; font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      animation: toast-in 0.25s var(--easing);
+      max-width: 320px; pointer-events: auto;
+      font-family: 'Nunito', sans-serif;
+    }
+    .toast.success { background: var(--success); }
+    .toast.warn { background: var(--warn); }
+    .toast.error { background: var(--danger); }
+    .toast.leaving { animation: toast-out 0.2s ease-in forwards; }
+    @keyframes toast-in {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes toast-out {
+      from { transform: translateY(0); opacity: 1; }
+      to { transform: translateY(10px); opacity: 0; }
+    }
+
+    /* Present mode */
+    body.present .editor { display: none; }
+    body.present .preview { padding: 20px; background: var(--ink); }
+    body.present .preview-label { color: rgba(255,255,255,0.5); }
+    body.present .nav button { background: rgba(255,255,255,0.15); color: white; border-color: transparent; }
+    body.present .nav button:hover { background: rgba(255,255,255,0.25); }
+    body.present #pageInfo { color: rgba(255,255,255,0.85); }
+    body.present #exitPresent { background: var(--danger); color: white; border-color: transparent; }
+
+    /* Print */
+    @media print {
+      body { overflow: visible; background: white; }
+      .editor, .nav, .preview-label, .toast-stack, #flipbook-wrap, .preview { display: none !important; }
+      .print-book { display: block !important; }
+      .print-page {
+        page-break-after: always;
+        width: 100%;
+        min-height: 95vh;
+        padding: 40px;
+        box-sizing: border-box;
+        font-family: 'Nunito', sans-serif;
+      }
+      .print-page:last-child { page-break-after: auto; }
+    }
+    .print-book { display: none; }
+
+    /* Load-in animation */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .editor-header, .meta, #pagesList .page-card, .toolbar {
+      animation: fadeInUp 0.4s var(--easing) backwards;
+    }
+    .meta { animation-delay: 0.05s; }
+    #pagesList .page-card:nth-child(1) { animation-delay: 0.10s; }
+    #pagesList .page-card:nth-child(2) { animation-delay: 0.15s; }
+    #pagesList .page-card:nth-child(3) { animation-delay: 0.20s; }
+    #pagesList .page-card:nth-child(4) { animation-delay: 0.25s; }
+
+    /* Scrollbar */
+    .editor::-webkit-scrollbar { width: 8px; }
+    .editor::-webkit-scrollbar-track { background: transparent; }
+    .editor::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
+    .editor::-webkit-scrollbar-thumb:hover { background: var(--ink-fade); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="editor">
+      <header class="editor-header">
+        <h1>📖 eBook Builder</h1>
+        <div class="subtitle">Type on the left ✏️ — watch the book come alive on the right ✨</div>
+      </header>
+
+      <div class="meta">
+        <label>📚 Book Title</label>
+        <input id="bookTitle" type="text" placeholder="The Wonderful Adventure of…" />
+
+        <label>✍️ Author</label>
+        <input id="bookAuthor" type="text" placeholder="Your Name" />
+
+        <label>🎨 Theme</label>
+        <div class="theme-picker">
+          <button class="theme-swatch sunshine" data-theme="sunshine" title="Sunshine 🌞"></button>
+          <button class="theme-swatch ocean"    data-theme="ocean"    title="Ocean 🌊"></button>
+          <button class="theme-swatch forest"   data-theme="forest"   title="Forest 🌲"></button>
+          <button class="theme-swatch galaxy"   data-theme="galaxy"   title="Galaxy 🌌"></button>
+        </div>
+      </div>
+
+      <div id="pagesList"></div>
+
+      <button id="addPage" class="add-btn">➕ Add a Page</button>
+
+      <div class="toolbar">
+        <button id="presentBtn" class="primary">🎬 Present</button>
+        <div class="undo-group">
+          <button id="undoBtn" class="secondary tiny" title="Undo (Ctrl+Z)">↶</button>
+          <button id="redoBtn" class="secondary tiny" title="Redo (Ctrl+Y)">↷</button>
+        </div>
+        <button id="exportBookBtn" class="primary">📖 Export Book</button>
+        <button id="exportBtn" class="secondary">📥 Export JSON</button>
+        <button id="importBtn" class="secondary">📤 Import JSON</button>
+        <button id="printBtn" class="ghost">🖨️ Print PDF</button>
+        <button id="resetBtn" class="ghost">♻️ Reset</button>
+        <input type="file" id="importInput" accept=".json" style="display:none" />
+      </div>
+
+      <div class="storage-bar" id="storageBar">💾 Auto-saved</div>
+    </aside>
+
+    <main class="preview">
+      <div class="preview-label">Live Preview</div>
+      <div id="flipbook-wrap">
+        <div id="flipbook"></div>
+      </div>
+      <div class="nav">
+        <button id="prevBtn">← Prev</button>
+        <span id="pageInfo">— / —</span>
+        <button id="nextBtn">Next →</button>
+        <button id="exitPresent" style="display:none;">✕ Exit</button>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+  <div class="print-book" id="printBook"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+  <script>
+    // ===== Default state =====
+    const DEFAULT_STATE = {
+      title: 'My Science Book',
+      author: 'Your Name',
+      theme: 'sunshine',
+      pages: [
+        { type: 'cover',   title: '',             body: '', image: null, layout: 'image-top' },
+        { type: 'content', title: 'Introduction', body: 'Welcome to my book! Tap the editor on the left to change this text or add a photo.', image: null, layout: 'image-top' },
+        { type: 'content', title: 'Chapter 1',    body: 'Add your science content here. Upload an image to illustrate this page.', image: null, layout: 'image-top' },
+        { type: 'content', title: 'Chapter 2',    body: 'Keep adding pages with the "Add a Page" button.', image: null, layout: 'image-top' },
+        { type: 'back',    title: 'The End',      body: 'Thanks for reading!', image: null, layout: 'image-top' }
+      ]
+    };
+
+    let state = loadState();
+    let pageFlip = null;
+    let renderTimer = null;
+    let lastPageViewed = 0;
+    let undoStack = [];
+    let redoStack = [];
+    let lastSnapTime = 0;
+
+    // ===== Persistence =====
+    function loadState() {
+      try {
+        const saved = localStorage.getItem('ebook-state');
+        if (!saved) return structuredClone(DEFAULT_STATE);
+        const parsed = JSON.parse(saved);
+        if (!parsed.pages || !Array.isArray(parsed.pages)) return structuredClone(DEFAULT_STATE);
+        parsed.pages.forEach(p => { if (!p.layout) p.layout = 'image-top'; });
+        if (!parsed.theme) parsed.theme = 'sunshine';
+        return parsed;
+      } catch (e) {
+        return structuredClone(DEFAULT_STATE);
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem('ebook-state', JSON.stringify(state));
+        updateStorageBar();
+      } catch (e) {
+        showToast('Storage full — export as JSON before adding more', 'error', 5000);
+      }
+    }
+
+    function updateStorageBar() {
+      const bytes = new Blob([JSON.stringify(state)]).size;
+      const kb = (bytes / 1024).toFixed(1);
+      const mb = (bytes / 1024 / 1024).toFixed(2);
+      const sizeStr = bytes < 1024 * 1024 ? `${kb} KB` : `${mb} MB`;
+      const warning = bytes > 4 * 1024 * 1024 ? ' · ⚠️ near 5MB cap' : '';
+      document.getElementById('storageBar').textContent = `💾 Auto-saved · ${sizeStr}${warning}`;
+    }
+
+    // ===== Undo / Redo =====
+    // Snapshot BEFORE mutating. Throttled version for rapid input events; immediate for discrete actions.
+    function pushUndo() {
+      const now = Date.now();
+      if (now - lastSnapTime < 400) return;
+      lastSnapTime = now;
+      undoStack.push(JSON.stringify(state));
+      if (undoStack.length > 20) undoStack.shift();
+      redoStack = [];
+      updateUndoButtons();
+    }
+    function pushUndoNow() {
+      lastSnapTime = Date.now();
+      undoStack.push(JSON.stringify(state));
+      if (undoStack.length > 20) undoStack.shift();
+      redoStack = [];
+      updateUndoButtons();
+    }
+    function undo() {
+      if (undoStack.length === 0) return;
+      redoStack.push(JSON.stringify(state));
+      state = JSON.parse(undoStack.pop());
+      lastSnapTime = 0;
+      applyState();
+      showToast('↶ Undid', 'info', 1200);
+    }
+    function redo() {
+      if (redoStack.length === 0) return;
+      undoStack.push(JSON.stringify(state));
+      state = JSON.parse(redoStack.pop());
+      lastSnapTime = 0;
+      applyState();
+      showToast('↷ Redid', 'info', 1200);
+    }
+    function updateUndoButtons() {
+      document.getElementById('undoBtn').disabled = undoStack.length === 0;
+      document.getElementById('redoBtn').disabled = redoStack.length === 0;
+    }
+    function applyState() {
+      saveState();
+      applyTheme();
+      renderEditor();
+      renderPreview();
+      updateUndoButtons();
+    }
+
+    // ===== Utilities =====
+    function escapeHtml(s) {
+      return (s || '').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+    function fileToDataURL(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+    async function compressImage(file, maxEdge = 1200, quality = 0.85) {
+      const dataUrl = await fileToDataURL(file);
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxEdge || height > maxEdge) {
+            if (width >= height) {
+              height = Math.round(height * (maxEdge / width));
+              width = maxEdge;
+            } else {
+              width = Math.round(width * (maxEdge / height));
+              height = maxEdge;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = reject;
+        img.src = dataUrl;
+      });
+    }
+    function dataUrlByteSize(dataUrl) {
+      const base64 = dataUrl.split(',')[1] || '';
+      return Math.round(base64.length * 0.75);
+    }
+
+    // ===== Toasts =====
+    function showToast(msg, kind = 'info', durationMs = 2800) {
+      const stack = document.getElementById('toastStack');
+      const t = document.createElement('div');
+      t.className = 'toast' + (kind && kind !== 'info' ? ' ' + kind : '');
+      t.textContent = msg;
+      stack.appendChild(t);
+      setTimeout(() => {
+        t.classList.add('leaving');
+        setTimeout(() => t.remove(), 200);
+      }, durationMs);
+    }
+
+    // ===== Theme =====
+    function applyTheme() {
+      document.documentElement.setAttribute('data-theme', state.theme || 'sunshine');
+      document.querySelectorAll('.theme-swatch').forEach(s => {
+        s.setAttribute('data-active', s.dataset.theme === (state.theme || 'sunshine'));
+      });
+    }
+
+    // ===== Editor render =====
+    function renderEditor() {
+      document.getElementById('bookTitle').value = state.title || '';
+      document.getElementById('bookAuthor').value = state.author || '';
+
+      const list = document.getElementById('pagesList');
+      list.innerHTML = '';
+
+      state.pages.forEach((page, i) => {
+        const card = document.createElement('div');
+        card.className = 'page-card';
+        card.dataset.type = page.type;
+        card.dataset.index = i;
+        const isContent = page.type === 'content';
+        if (isContent) card.draggable = true;
+
+        const labelText = page.type === 'cover'
+          ? '📕 Front Cover'
+          : page.type === 'back'
+            ? '📕 Back Cover'
+            : `📄 Page ${i}`;
+
+        const titlePlaceholder = page.type === 'cover'
+          ? 'Title shown on cover (defaults to Book Title)'
+          : page.type === 'back'
+            ? 'Closing heading'
+            : 'Page heading';
+
+        const layoutSelector = isContent ? `
+          <label>Layout</label>
+          <select data-i="${i}" data-field="layout">
+            <option value="image-top" ${page.layout === 'image-top' ? 'selected' : ''}>🖼️ Image top + text below</option>
+            <option value="fullbleed" ${page.layout === 'fullbleed' ? 'selected' : ''}>🖼️ Full-bleed image + caption</option>
+            <option value="quote" ${page.layout === 'quote' ? 'selected' : ''}>💬 Big quote (text only)</option>
+            <option value="side" ${page.layout === 'side' ? 'selected' : ''}>↔️ Image left + text right</option>
+          </select>
+        ` : '';
+
+        card.innerHTML = `
+          <div class="page-card-header">
+            ${isContent ? '<span class="drag-handle" title="Drag to reorder">⋮⋮</span>' : '<span style="width:8px"></span>'}
+            <strong>${labelText}</strong>
+            <div class="page-card-actions">
+              ${isContent ? `<button class="ghost tiny" data-dup="${i}" title="Duplicate page">🧬</button>` : ''}
+              ${isContent ? `<button class="danger tiny" data-del="${i}" title="Remove">🗑️</button>` : ''}
+            </div>
+          </div>
+          <label>Heading</label>
+          <input type="text" data-i="${i}" data-field="title" value="${escapeHtml(page.title)}" placeholder="${titlePlaceholder}" />
+          <label>Body Text</label>
+          <textarea data-i="${i}" data-field="body" placeholder="Write your content here…">${escapeHtml(page.body)}</textarea>
+          ${layoutSelector}
+          <label>Image (optional)</label>
+          <div>
+            ${page.image ? `<img src="${page.image}" class="thumb" alt="preview" />` : ''}
+            <input type="file" data-img="${i}" accept="image/*" />
+            ${page.image ? `<button class="danger tiny" data-clearimg="${i}">Remove image</button>` : ''}
+          </div>
+        `;
+        list.appendChild(card);
+      });
+
+      bindEditorEvents();
+      updateStorageBar();
+    }
+
+    function bindEditorEvents() {
+      // Text + select fields
+      document.querySelectorAll('[data-field]').forEach(el => {
+        const handler = e => {
+          const i = +e.target.dataset.i;
+          const field = e.target.dataset.field;
+          if (el.tagName === 'SELECT') {
+            pushUndoNow();
+          } else {
+            pushUndo();
+          }
+          state.pages[i][field] = e.target.value;
+          saveState();
+          schedulePreviewRender();
+        };
+        el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', handler);
+      });
+
+      // Image upload
+      document.querySelectorAll('[data-img]').forEach(el => {
+        el.addEventListener('change', async e => {
+          const i = +e.target.dataset.img;
+          const file = e.target.files[0];
+          if (!file) return;
+          if (!file.type.startsWith('image/')) {
+            showToast('Please choose an image file (jpg, png, gif)', 'error');
+            e.target.value = '';
+            return;
+          }
+          const originalSize = file.size;
+          try {
+            const compressed = await compressImage(file);
+            const newSize = dataUrlByteSize(compressed);
+            pushUndoNow();
+            state.pages[i].image = compressed;
+            saveState();
+            renderEditor();
+            schedulePreviewRender();
+            const origKb = Math.round(originalSize / 1024);
+            const newKb = Math.round(newSize / 1024);
+            if (originalSize > newSize * 1.5) {
+              showToast(`🗜️ Compressed ${origKb}KB → ${newKb}KB`, 'success');
+            } else {
+              showToast(`📸 Image added (${newKb}KB)`, 'success');
+            }
+          } catch (err) {
+            showToast('Could not load that image', 'error');
+          }
+        });
+      });
+
+      // Clear image
+      document.querySelectorAll('[data-clearimg]').forEach(el => {
+        el.addEventListener('click', e => {
+          const i = +e.target.dataset.clearimg;
+          pushUndoNow();
+          state.pages[i].image = null;
+          saveState();
+          renderEditor();
+          schedulePreviewRender();
+        });
+      });
+
+      // Delete page
+      document.querySelectorAll('[data-del]').forEach(el => {
+        el.addEventListener('click', e => {
+          const i = +e.target.dataset.del;
+          if (confirm('Delete this page?')) {
+            pushUndoNow();
+            state.pages.splice(i, 1);
+            saveState();
+            renderEditor();
+            schedulePreviewRender();
+            showToast('🗑️ Page deleted', 'info', 1500);
+          }
+        });
+      });
+
+      // Duplicate page
+      document.querySelectorAll('[data-dup]').forEach(el => {
+        el.addEventListener('click', e => {
+          const i = +e.target.dataset.dup;
+          pushUndoNow();
+          const copy = JSON.parse(JSON.stringify(state.pages[i]));
+          state.pages.splice(i + 1, 0, copy);
+          saveState();
+          renderEditor();
+          schedulePreviewRender();
+          showToast('🧬 Page duplicated', 'success', 1500);
+        });
+      });
+
+      // Drag-and-drop
+      let dragSrc = null;
+      document.querySelectorAll('.page-card[draggable="true"]').forEach(card => {
+        card.addEventListener('dragstart', e => {
+          dragSrc = +card.dataset.index;
+          card.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          try { e.dataTransfer.setData('text/plain', String(dragSrc)); } catch (_) {}
+        });
+        card.addEventListener('dragend', () => {
+          card.classList.remove('dragging');
+          document.querySelectorAll('.page-card').forEach(c => c.classList.remove('drop-above', 'drop-below'));
+        });
+        card.addEventListener('dragover', e => {
+          if (dragSrc === null) return;
+          const targetIdx = +card.dataset.index;
+          if (state.pages[targetIdx].type !== 'content') return;
+          if (targetIdx === dragSrc) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          const rect = card.getBoundingClientRect();
+          const above = (e.clientY - rect.top) < rect.height / 2;
+          card.classList.toggle('drop-above', above);
+          card.classList.toggle('drop-below', !above);
+        });
+        card.addEventListener('dragleave', () => {
+          card.classList.remove('drop-above', 'drop-below');
+        });
+        card.addEventListener('drop', e => {
+          if (dragSrc === null) return;
+          e.preventDefault();
+          const targetIdx = +card.dataset.index;
+          if (state.pages[targetIdx].type !== 'content') return;
+          if (targetIdx === dragSrc) { dragSrc = null; return; }
+          const rect = card.getBoundingClientRect();
+          const above = (e.clientY - rect.top) < rect.height / 2;
+          const insertAt = above ? targetIdx : targetIdx + 1;
+          pushUndoNow();
+          const [moved] = state.pages.splice(dragSrc, 1);
+          const adjustedInsert = dragSrc < insertAt ? insertAt - 1 : insertAt;
+          state.pages.splice(adjustedInsert, 0, moved);
+          dragSrc = null;
+          saveState();
+          renderEditor();
+          schedulePreviewRender();
+          showToast('↕️ Page reordered', 'success', 1500);
+        });
+      });
+    }
+
+    // ===== Preview render =====
+    function schedulePreviewRender() {
+      clearTimeout(renderTimer);
+      renderTimer = setTimeout(renderPreview, 320);
+    }
+
+    function renderPreview() {
+      // StPageFlip's destroy() detaches the container element, so we rebuild it inside flipbook-wrap each render. Robust + idempotent.
+      const wrap = document.getElementById('flipbook-wrap');
+      if (pageFlip) {
+        try { pageFlip.destroy(); } catch (e) {}
+        pageFlip = null;
+      }
+      wrap.innerHTML = '';
+      const container = document.createElement('div');
+      container.id = 'flipbook';
+      wrap.appendChild(container);
+
+      if (!state.pages || state.pages.length === 0) {
+        container.innerHTML = `
+          <div class="empty-flip">
+            <div class="icon">📖</div>
+            <h3>Your book is empty</h3>
+            <p>Click "Add a Page" on the left to start writing your story.</p>
+          </div>
+        `;
+        document.getElementById('pageInfo').textContent = '— / —';
+        return;
+      }
+
+      state.pages.forEach((page, i) => {
+        const div = document.createElement('div');
+        const isCoverOrBack = page.type === 'cover' || page.type === 'back';
+        const layoutClass = page.type === 'content' ? `layout-${page.layout || 'image-top'}` : '';
+        div.className = 'pf-page' + (isCoverOrBack ? ' cover' : '') + (layoutClass ? ' ' + layoutClass : '');
+
+        if (page.type === 'cover') {
+          div.innerHTML = `
+            <h1>${escapeHtml(page.title || state.title || 'Untitled')}</h1>
+            ${page.image ? `<img src="${page.image}" alt="cover" />` : ''}
+            <div class="author">by ${escapeHtml(state.author || '')}</div>
+          `;
+        } else if (page.type === 'back') {
+          div.innerHTML = `
+            <h1>${escapeHtml(page.title || 'The End')}</h1>
+            ${page.image ? `<img src="${page.image}" alt="" />` : ''}
+            <p style="opacity:0.95">${escapeHtml(page.body).replace(/\n/g, '<br>')}</p>
+          `;
+        } else {
+          const layout = page.layout || 'image-top';
+          if (layout === 'fullbleed' && page.image) {
+            div.innerHTML = `
+              <img src="${page.image}" alt="" />
+              <div class="caption">
+                ${page.title ? `<h2>${escapeHtml(page.title)}</h2>` : ''}
+                <p>${escapeHtml(page.body).replace(/\n/g, '<br>')}</p>
+              </div>
+              <span class="pagenum">${i}</span>
+            `;
+          } else if (layout === 'quote') {
+            div.innerHTML = `
+              ${page.title ? `<h2>${escapeHtml(page.title)}</h2>` : ''}
+              <p>${escapeHtml(page.body).replace(/\n/g, '<br>')}</p>
+              <span class="pagenum">${i}</span>
+            `;
+          } else if (layout === 'side' && page.image) {
+            div.innerHTML = `
+              <img src="${page.image}" alt="" />
+              <div class="text">
+                ${page.title ? `<h2>${escapeHtml(page.title)}</h2>` : ''}
+                <p>${escapeHtml(page.body).replace(/\n/g, '<br>')}</p>
+              </div>
+              <span class="pagenum">${i}</span>
+            `;
+          } else {
+            div.innerHTML = `
+              ${page.title ? `<h2>${escapeHtml(page.title)}</h2>` : ''}
+              ${page.image ? `<img src="${page.image}" alt="" />` : ''}
+              <p>${escapeHtml(page.body).replace(/\n/g, '<br>')}</p>
+              <span class="pagenum">${i}</span>
+            `;
+          }
+        }
+        container.appendChild(div);
+      });
+
+      // Scale flipbook to fill the available preview area while keeping a portrait book aspect ratio.
+      const previewEl = document.querySelector('.preview');
+      const availW = Math.max(previewEl.clientWidth - 40, 400);
+      const availH = Math.max(previewEl.clientHeight - 130, 360);
+      const aspect = 0.72; // pageW / pageH
+      let pageH = availH;
+      let pageW = pageH * aspect;
+      if (pageW * 2 > availW) {
+        pageW = availW / 2;
+        pageH = pageW / aspect;
+      }
+      pageW = Math.floor(pageW);
+      pageH = Math.floor(pageH);
+
+      pageFlip = new St.PageFlip(container, {
+        width: pageW,
+        height: pageH,
+        size: 'fixed',
+        maxShadowOpacity: 0.5,
+        showCover: true,
+        mobileScrollSupport: false,
+        flippingTime: 700,
+        usePortrait: false,
+        drawShadow: true
+      });
+
+      pageFlip.loadFromHTML(container.querySelectorAll('.pf-page'));
+
+      pageFlip.on('flip', e => {
+        lastPageViewed = e.data;
+        updatePageInfo(e.data);
+      });
+
+      if (lastPageViewed > 0 && lastPageViewed < state.pages.length) {
+        try { pageFlip.flip(lastPageViewed); } catch (e) {}
+      }
+      updatePageInfo(lastPageViewed);
+    }
+
+    function updatePageInfo(current) {
+      const total = state.pages.length;
+      document.getElementById('pageInfo').textContent = `${current + 1} / ${total}`;
+    }
+
+    // ===== Top-level inputs =====
+    document.getElementById('bookTitle').addEventListener('input', e => {
+      pushUndo();
+      state.title = e.target.value;
+      saveState();
+      schedulePreviewRender();
+    });
+    document.getElementById('bookAuthor').addEventListener('input', e => {
+      pushUndo();
+      state.author = e.target.value;
+      saveState();
+      schedulePreviewRender();
+    });
+    document.querySelectorAll('.theme-swatch').forEach(s => {
+      s.addEventListener('click', () => {
+        if (state.theme === s.dataset.theme) return;
+        pushUndoNow();
+        state.theme = s.dataset.theme;
+        saveState();
+        applyTheme();
+        schedulePreviewRender();
+        showToast(`🎨 Theme: ${s.dataset.theme}`, 'info', 1200);
+      });
+    });
+    document.getElementById('addPage').addEventListener('click', () => {
+      pushUndoNow();
+      const backIdx = state.pages.findIndex(p => p.type === 'back');
+      const newPage = { type: 'content', title: 'New Page', body: '', image: null, layout: 'image-top' };
+      if (backIdx >= 0) state.pages.splice(backIdx, 0, newPage);
+      else state.pages.push(newPage);
+      saveState();
+      renderEditor();
+      schedulePreviewRender();
+    });
+    document.getElementById('prevBtn').addEventListener('click', () => { try { pageFlip?.flipPrev(); } catch (e) {} });
+    document.getElementById('nextBtn').addEventListener('click', () => { try { pageFlip?.flipNext(); } catch (e) {} });
+    document.getElementById('undoBtn').addEventListener('click', undo);
+    document.getElementById('redoBtn').addEventListener('click', redo);
+
+    document.getElementById('presentBtn').addEventListener('click', () => {
+      document.body.classList.add('present');
+      document.getElementById('exitPresent').style.display = '';
+      try { document.documentElement.requestFullscreen(); } catch (e) {}
+      schedulePreviewRender();
+    });
+    document.getElementById('exitPresent').addEventListener('click', () => {
+      document.body.classList.remove('present');
+      document.getElementById('exitPresent').style.display = 'none';
+      try { document.exitFullscreen(); } catch (e) {}
+      schedulePreviewRender();
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(state.title || 'ebook').replace(/[^a-z0-9]/gi, '_')}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('📥 Book exported as JSON', 'success');
+    });
+    document.getElementById('importBtn').addEventListener('click', () => {
+      document.getElementById('importInput').click();
+    });
+    document.getElementById('importInput').addEventListener('change', async e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const imported = JSON.parse(text);
+        if (!imported.pages || !Array.isArray(imported.pages)) throw new Error('Invalid book file');
+        pushUndoNow();
+        state = imported;
+        if (!state.theme) state.theme = 'sunshine';
+        state.pages.forEach(p => { if (!p.layout) p.layout = 'image-top'; });
+        lastPageViewed = 0;
+        saveState();
+        applyTheme();
+        renderEditor();
+        renderPreview();
+        showToast('📤 Book imported', 'success');
+      } catch (err) {
+        showToast('That JSON file looks corrupted', 'error');
+      }
+      e.target.value = '';
+    });
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      if (confirm('Reset to a blank starter book? Your current work will be lost (export first if needed).')) {
+        pushUndoNow();
+        state = structuredClone(DEFAULT_STATE);
+        lastPageViewed = 0;
+        saveState();
+        applyTheme();
+        renderEditor();
+        renderPreview();
+        showToast('♻️ Reset to default', 'info');
+      }
+    });
+
+    document.getElementById('printBtn').addEventListener('click', () => {
+      buildPrintBook();
+      setTimeout(() => window.print(), 100);
+    });
+
+    document.getElementById('exportBookBtn').addEventListener('click', () => {
+      try { exportBookHTML(); }
+      catch (e) { showToast('Export failed: ' + (e?.message || e), 'error', 5000); console.error(e); }
+    });
+
+    function buildPrintBook() {
+      const printRoot = document.getElementById('printBook');
+      printRoot.innerHTML = '';
+      const styles = getComputedStyle(document.documentElement);
+      const gradStart = styles.getPropertyValue('--theme-grad-start').trim();
+      const gradEnd = styles.getPropertyValue('--theme-grad-end').trim();
+      const accent = styles.getPropertyValue('--theme-page-accent').trim();
+      state.pages.forEach((page, i) => {
+        const div = document.createElement('div');
+        div.className = 'print-page';
+        if (page.type === 'cover') {
+          div.innerHTML = `
+            <div style="background:linear-gradient(135deg, ${gradStart}, ${gradEnd}); color:white; padding:80px; height:100%; min-height:90vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+              <h1 style="font-family:Fredoka,sans-serif; font-size:56px; margin:0 0 20px 0;">${escapeHtml(page.title || state.title)}</h1>
+              ${page.image ? `<img src="${page.image}" style="max-width:60%; max-height:50%; margin:20px 0; border-radius:12px;"/>` : ''}
+              <div style="font-style:italic; opacity:0.9; margin-top:30px;">by ${escapeHtml(state.author)}</div>
+            </div>
+          `;
+        } else if (page.type === 'back') {
+          div.innerHTML = `
+            <div style="background:linear-gradient(135deg, ${gradStart}, ${gradEnd}); color:white; padding:80px; height:100%; min-height:90vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+              <h1 style="font-family:Fredoka,sans-serif; font-size:48px; margin:0 0 20px 0;">${escapeHtml(page.title || 'The End')}</h1>
+              ${page.image ? `<img src="${page.image}" style="max-width:50%; max-height:40%; margin:20px 0; border-radius:12px;"/>` : ''}
+              <p style="font-size:18px;">${escapeHtml(page.body).replace(/\n/g, '<br>')}</p>
+            </div>
+          `;
+        } else {
+          div.innerHTML = `
+            <h2 style="font-family:Fredoka,sans-serif; font-size:36px; color:${accent}; margin-bottom:24px;">${escapeHtml(page.title)}</h2>
+            ${page.image ? `<img src="${page.image}" style="max-width:80%; max-height:50%; margin:20px auto; display:block; border-radius:8px;"/>` : ''}
+            <p style="font-size:18px; line-height:1.7;">${escapeHtml(page.body).replace(/\n/g, '<br>')}</p>
+          `;
+        }
+        printRoot.appendChild(div);
+      });
+    }
+
+    // ===== Export Book as standalone HTML (animated viewer) =====
+    function escapeForExport(s) {
+      return (s || '').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+    function buildExportedPageHTML(page, i, state) {
+      const e = escapeForExport;
+      const classes = ['pf-page'];
+      if (page.type === 'cover' || page.type === 'back') classes.push('cover');
+      if (page.type === 'content') classes.push('layout-' + (page.layout || 'image-top'));
+
+      let inner = '';
+      if (page.type === 'cover') {
+        inner = `<h1>${e(page.title || state.title || 'Untitled')}</h1>${page.image ? `<img src="${page.image}" alt="cover" />` : ''}<div class="author">by ${e(state.author || '')}</div>`;
+      } else if (page.type === 'back') {
+        inner = `<h1>${e(page.title || 'The End')}</h1>${page.image ? `<img src="${page.image}" alt="" />` : ''}<p>${e(page.body).replace(/\n/g, '<br>')}</p>`;
+      } else {
+        const layout = page.layout || 'image-top';
+        if (layout === 'fullbleed' && page.image) {
+          inner = `<img src="${page.image}" alt="" /><div class="caption">${page.title ? `<h2>${e(page.title)}</h2>` : ''}<p>${e(page.body).replace(/\n/g, '<br>')}</p></div>`;
+        } else if (layout === 'quote') {
+          inner = `${page.title ? `<h2>${e(page.title)}</h2>` : ''}<p>${e(page.body).replace(/\n/g, '<br>')}</p>`;
+        } else if (layout === 'side' && page.image) {
+          inner = `<img src="${page.image}" alt="" /><div class="text">${page.title ? `<h2>${e(page.title)}</h2>` : ''}<p>${e(page.body).replace(/\n/g, '<br>')}</p></div>`;
+        } else {
+          inner = `${page.title ? `<h2>${e(page.title)}</h2>` : ''}${page.image ? `<img src="${page.image}" alt="" />` : ''}<p>${e(page.body).replace(/\n/g, '<br>')}</p>`;
+        }
+      }
+      return `<div class="${classes.join(' ')}">${inner}</div>`;
+    }
+
+    function exportBookHTML() {
+      const pagesHTML = state.pages.map((p, i) => buildExportedPageHTML(p, i, state)).join('\n');
+      const safeTitle = escapeForExport(state.title || 'My eBook');
+      const safeAuthor = escapeForExport(state.author || '');
+      const theme = state.theme || 'sunshine';
+
+      const viewerCSS = `
+*{box-sizing:border-box}html,body{height:100%}
+:root{--bg:#fbf6ec;--ink:#3a2e26;--ink-soft:#6b574c;--ink-fade:#a39181;--theme-grad-start:#fbb454;--theme-grad-end:#f77b56;--theme-page-accent:#f77b56;--shadow-book:0 24px 60px -10px rgba(58,46,38,.35),0 8px 20px -8px rgba(58,46,38,.25)}
+[data-theme="sunshine"]{--theme-grad-start:#fbb454;--theme-grad-end:#f77b56;--theme-page-accent:#f77b56}
+[data-theme="ocean"]{--theme-grad-start:#4fb6c4;--theme-grad-end:#2c7a8d;--theme-page-accent:#2c7a8d}
+[data-theme="forest"]{--theme-grad-start:#88b864;--theme-grad-end:#4a7a3a;--theme-page-accent:#4a7a3a}
+[data-theme="galaxy"]{--theme-grad-start:#6b5bb5;--theme-grad-end:#2e2452;--theme-page-accent:#8a73d4}
+body{margin:0;font-family:'Nunito',system-ui,sans-serif;background:var(--bg);color:var(--ink);overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;background-image:radial-gradient(ellipse at 20% 30%,color-mix(in srgb,var(--theme-grad-start) 10%,transparent),transparent 50%),radial-gradient(ellipse at 80% 70%,color-mix(in srgb,var(--theme-grad-end) 10%,transparent),transparent 50%)}
+h1,h2,h3{font-family:'Fredoka',system-ui,sans-serif;font-weight:600;letter-spacing:-.01em}
+.hero{position:absolute;top:18px;left:0;right:0;text-align:center;color:var(--ink-soft);font-family:'Fredoka',sans-serif;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;pointer-events:none}
+#flipbook-wrap{filter:drop-shadow(var(--shadow-book))}
+#flipbook{margin:0 auto}
+.pf-page{background:#fff;padding:36px 32px;overflow:hidden;position:relative;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .7 0 0 0 0 .65 0 0 0 0 .55 0 0 0 .08 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")}
+.pf-page.cover{background:linear-gradient(135deg,var(--theme-grad-start),var(--theme-grad-end));color:#fff;display:flex !important;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:36px 30px}
+.pf-page.cover::before{content:"";position:absolute;inset:0;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");pointer-events:none}
+.pf-page.cover>*{position:relative;z-index:1}
+.pf-page.cover h1{font-size:30px;margin:0 0 12px;line-height:1.15;font-weight:700;text-shadow:0 2px 8px rgba(0,0,0,.15)}
+.pf-page.cover .author{font-size:13px;opacity:.95;margin-top:14px;font-style:italic;font-family:'Nunito',sans-serif;letter-spacing:.5px}
+.pf-page.cover img{max-width:65%;max-height:45%;margin:14px 0;border-radius:12px;object-fit:contain;box-shadow:0 8px 20px rgba(0,0,0,.2)}
+.pf-page h2{font-size:22px;margin:0 0 14px;color:var(--theme-page-accent);font-weight:600}
+.pf-page p{font-size:14px;line-height:1.7;color:var(--ink);margin:0 0 12px}
+.pf-page img{max-width:100%;border-radius:8px;display:block;object-fit:contain}
+.pf-page.layout-image-top img{max-height:45%;margin:0 auto 16px}
+.pf-page.layout-fullbleed{padding:0}
+.pf-page.layout-fullbleed>img{width:100%;height:100%;object-fit:cover;border-radius:0;position:absolute;inset:0}
+.pf-page.layout-fullbleed .caption{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.85),rgba(0,0,0,.4) 70%,transparent);color:#fff;padding:30px 28px 24px;z-index:1}
+.pf-page.layout-fullbleed .caption h2{color:#fff;margin-bottom:6px}
+.pf-page.layout-fullbleed .caption p{color:rgba(255,255,255,.95);font-size:13px;margin:0}
+.pf-page.layout-quote{display:flex !important;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:50px 40px}
+.pf-page.layout-quote h2{font-size:26px;line-height:1.3;color:var(--theme-page-accent);margin-bottom:18px}
+.pf-page.layout-quote p{font-size:16px;line-height:1.6;color:var(--ink-soft);max-width:90%}
+.pf-page.layout-quote::before{content:"\\201C";position:absolute;top:20px;left:30px;font-family:'Fredoka',serif;font-size:90px;line-height:1;color:color-mix(in srgb,var(--theme-page-accent) 30%,transparent)}
+.pf-page.layout-side{display:flex !important;gap:24px;align-items:flex-start}
+.pf-page.layout-side>img{flex:0 0 45%;max-width:45%;max-height:75%;min-width:0;margin:0;align-self:center}
+.pf-page.layout-side .text{flex:1;min-width:0;padding-top:4px}
+.nav{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.85);backdrop-filter:blur(8px);padding:8px 12px;border-radius:14px;box-shadow:0 6px 20px rgba(58,46,38,.18);font-family:'Fredoka',sans-serif;font-size:13px;color:var(--ink)}
+.nav button{background:transparent;border:none;cursor:pointer;padding:8px 12px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);transition:background .15s}
+.nav button:hover{background:rgba(58,46,38,.08)}
+.nav button:disabled{opacity:.35;cursor:not-allowed}
+#pageInfo{padding:0 8px;font-variant-numeric:tabular-nums;color:var(--ink-soft)}
+:fullscreen body,:fullscreen #flipbook-wrap{background:var(--ink) !important}
+:fullscreen body{background-image:none !important}
+`.replace(/\n\s*/g, '\n').trim();
+
+      const viewerScript = `
+(function(){
+  var aspect = 0.72;
+  var book = document.getElementById('flipbook');
+  var pf = null;
+  function size() {
+    var w = Math.max(window.innerWidth - 40, 380);
+    var h = Math.max(window.innerHeight - 120, 360);
+    var pH = h;
+    var pW = pH * aspect;
+    if (pW * 2 > w) { pW = w / 2; pH = pW / aspect; }
+    return { w: Math.floor(pW), h: Math.floor(pH) };
+  }
+  var snapshot = book.innerHTML;
+  function init() {
+    if (pf) { try { pf.destroy(); } catch(e){} pf = null; }
+    var wrap = document.getElementById('flipbook-wrap');
+    wrap.innerHTML = '';
+    var fresh = document.createElement('div');
+    fresh.id = 'flipbook';
+    fresh.innerHTML = snapshot;
+    wrap.appendChild(fresh);
+    book = fresh;
+    var s = size();
+    pf = new St.PageFlip(book, {
+      width: s.w, height: s.h, size: 'fixed',
+      maxShadowOpacity: 0.5, showCover: true,
+      mobileScrollSupport: false, flippingTime: 700,
+      usePortrait: false, drawShadow: true
+    });
+    pf.loadFromHTML(book.querySelectorAll('.pf-page'));
+    var total = book.querySelectorAll('.pf-page').length;
+    function update(i){ document.getElementById('pageInfo').textContent = (i+1)+' / '+total; }
+    pf.on('flip', function(e){ update(e.data); });
+    update(0);
+  }
+  document.getElementById('prevBtn').onclick = function(){ try{pf && pf.flipPrev();}catch(e){} };
+  document.getElementById('nextBtn').onclick = function(){ try{pf && pf.flipNext();}catch(e){} };
+  document.getElementById('fsBtn').onclick = function(){
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen();
+  };
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowLeft') { try{pf && pf.flipPrev();}catch(e){} }
+    if (e.key === 'ArrowRight') { try{pf && pf.flipNext();}catch(e){} }
+  });
+  var resizeTimer;
+  window.addEventListener('resize', function(){
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(init, 220);
+  });
+  if (window.St && St.PageFlip) init();
+  else window.addEventListener('load', init);
+})();
+`.trim();
+
+      const html = '<!DOCTYPE html>\n' +
+'<html lang="en" data-theme="' + theme + '">\n' +
+'<head>\n' +
+'  <meta charset="UTF-8" />\n' +
+'  <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n' +
+'  <title>' + safeTitle + '</title>\n' +
+'  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext y=\'80\' font-size=\'80\'%3E📖%3C/text%3E%3C/svg%3E">\n' +
+'  <link rel="preconnect" href="https://fonts.googleapis.com">\n' +
+'  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n' +
+'  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">\n' +
+'  <style>\n' + viewerCSS + '\n  </style>\n' +
+'</head>\n' +
+'<body>\n' +
+'  <div class="hero">' + safeTitle + (safeAuthor ? ' · by ' + safeAuthor : '') + '</div>\n' +
+'  <div id="flipbook-wrap"><div id="flipbook">\n' + pagesHTML + '\n</div></div>\n' +
+'  <div class="nav">\n' +
+'    <button id="prevBtn" title="Previous (←)">← Prev</button>\n' +
+'    <span id="pageInfo">— / —</span>\n' +
+'    <button id="nextBtn" title="Next (→)">Next →</button>\n' +
+'    <button id="fsBtn" title="Fullscreen">⛶</button>\n' +
+'  </div>\n' +
+'  <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"><\/script>\n' +
+'  <script>\n' + viewerScript + '\n  <\/script>\n' +
+'</body>\n' +
+'</html>\n';
+
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (state.title || 'ebook').replace(/[^a-z0-9]/gi, '_') + '.html';
+      a.click();
+      URL.revokeObjectURL(url);
+
+      const sizeKB = Math.round(blob.size / 1024);
+      const sizeStr = sizeKB > 1024 ? (sizeKB / 1024).toFixed(1) + ' MB' : sizeKB + ' KB';
+      showToast('📖 Book exported as HTML · ' + sizeStr, 'success', 3500);
+    }
+
+    // Keyboard
+    document.addEventListener('keydown', e => {
+      const meta = e.ctrlKey || e.metaKey;
+      if (meta && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+      if (meta && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) { e.preventDefault(); redo(); return; }
+      const inField = e.target.matches('input, textarea, select');
+      if (inField) return;
+      if (e.key === 'ArrowLeft') pageFlip?.flipPrev();
+      if (e.key === 'ArrowRight') pageFlip?.flipNext();
+      if (e.key === 'Escape' && document.body.classList.contains('present')) {
+        document.getElementById('exitPresent').click();
+      }
+    });
+
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(renderPreview, 200);
+    });
+
+    // ===== Boot =====
+    applyTheme();
+    renderEditor();
+    updateUndoButtons();
+    setTimeout(renderPreview, 60);
+  </script>
+</body>
+</html>
